@@ -340,7 +340,8 @@ for ano in anos:
         energia_led_list.append(energia_led)
         fluxos_led.append(inv_led)
 
-        poupanca_ano_list.append(0)
+        # O ano 0 regista o esforço financeiro inicial (negativo se for financiado pela Câmara)
+        poupanca_ano_list.append(-inv_led)
     else:
         energia_vsap = (energia_ativa_ano_vsap + custo_fixo_ano_vsap) * ((1 + inflacao_energia) ** ano)
         energia_led = (energia_ativa_ano_led + custo_fixo_ano_led) * ((1 + inflacao_energia) ** ano)
@@ -381,6 +382,17 @@ cal_vsap = npf.npv(taxa_atualizacao, fluxos_vsap)
 cal_led = npf.npv(taxa_atualizacao, fluxos_led)
 poupanca_liquida = cal_vsap - cal_led
 
+# Cálculo do Payback Period (Tempo de Retorno)
+poupanca_cumulativa = np.cumsum(poupanca_ano_list)
+payback_ano = "Não recupera"
+if ativar_esco:
+    payback_ano = "Imediato"
+else:
+    for i, val in enumerate(poupanca_cumulativa):
+        if val >= 0 and i > 0:
+            payback_ano = f"{i} Anos"
+            break
+
 # ==========================================
 # 4. INTERFACE PRINCIPAL (MAIN UI)
 # ==========================================
@@ -389,20 +401,21 @@ if 'freguesia_escolhida' in locals() and freguesia_escolhida != "Todas":
 else:
     st.title(f"Auditoria Energética IP: Município de {concelho_escolhido}")
 
-st.markdown(f"Ferramenta de Apoio à Decisão (Análise LCC {anos_projeto} Anos)")
+st.markdown(f"Ferramenta de Apoio à Decisão Estratégica (Análise LCC {anos_projeto} Anos)")
 
 st.divider()
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
 
 kpi1.metric("Luminárias a Substituir", f"{lampadas_totais:,.0f} un")
 kpi2.metric("Potência a Abater", f"{potencia_antiga_kw:,.1f} kW")
 
 if ativar_esco:
-    kpi3.metric("Investimento Município (Ano 0)", "0 €", f"CAPEX {capex_projeto_total:,.0f} € pago pela ESCO", delta_color="normal")
+    kpi3.metric("Investimento Município", "0 €", f"CAPEX {capex_projeto_total:,.0f} € via ESCO", delta_color="normal")
 else:
     kpi3.metric("Investimento Previsto (CAPEX)", f"{capex_projeto_total:,.0f} €")
 
-kpi4.metric("Poupança Líquida Município (NPV)", f"{poupanca_liquida:,.0f} €")
+kpi4.metric("Poupança Líquida (NPV)", f"{poupanca_liquida:,.0f} €")
+kpi5.metric("Tempo de Retorno (Payback)", payback_ano)
 st.divider()
 
 tab1, tab2, tab3 = st.tabs(["1. Diagnóstico do Parque", "2. Análise Financeira", "3. Especificações Técnicas"])
@@ -411,30 +424,55 @@ with tab1:
     st.subheader("Situação Atual do Parque de Iluminação")
     df_chart = df_tipos_lampada[df_tipos_lampada['Lâmpadas'] > 0].copy()
     
-    col_chart, col_dados = st.columns([1.5, 1])
+    col_gauge, col_chart, col_dados = st.columns([1, 1.5, 1])
+
+    perc_led_format = (total_led / total_lampadas_concelho) * 100 if total_lampadas_concelho > 0 else 0
+
+    with col_gauge:
+        # Gráfico de Velocímetro (Gauge) para mostrar a penetração LED atual
+        fig_gauge = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = perc_led_format,
+            number = {'suffix': "%", 'font': {'size': 36}},
+            title = {'text': "Penetração LED Atual", 'font': {'size': 18}},
+            gauge = {
+                'axis': {'range': [0, 100]},
+                'bar': {'color': "#2ecc71"},
+                'steps' : [
+                    {'range': [0, 30], 'color': "#f8d7da"},
+                    {'range': [30, 70], 'color': "#fff3cd"},
+                    {'range': [70, 100], 'color': "#d4edda"}],
+            }
+        ))
+        fig_gauge.update_layout(height=250, margin=dict(t=40, b=0, l=10, r=10))
+        st.plotly_chart(fig_gauge, use_container_width=True)
 
     with col_chart:
         if not df_chart.empty:
-            fig_pie = px.pie(
-                df_chart, 
-                values='Lâmpadas', 
-                names='Tipo de Lâmpada', 
-                hole=0.4,
+            # Gráfico de Barras Horizontal (Substitui o Pie Chart)
+            df_chart_sorted = df_chart.sort_values('Lâmpadas', ascending=True)
+            fig_bar = px.bar(
+                df_chart_sorted, 
+                x='Lâmpadas', 
+                y='Tipo de Lâmpada', 
+                orientation='h',
+                color='Tipo de Lâmpada',
                 color_discrete_sequence=px.colors.qualitative.Set2
             )
-            fig_pie.update_traces(textposition='inside', textinfo='percent', hoverinfo='label+value+percent')
-            fig_pie.update_layout(margin=dict(t=0, b=0, l=0, r=0), showlegend=True,
-                                  legend=dict(orientation="v", yanchor="auto", y=0.5, xanchor="left", x=1.0))
-            st.plotly_chart(fig_pie, use_container_width=True)
+            fig_bar.update_layout(
+                margin=dict(t=20, b=0, l=0, r=0), 
+                showlegend=False,
+                xaxis_title="Número de Luminárias",
+                yaxis_title=""
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
         else:
             st.warning("Sem dados de parque para visualização.")
 
     with col_dados:
-        st.markdown("**Inventário de Lâmpadas Existentes**")
+        st.markdown("**Inventário Existente**")
         st.dataframe(df_chart.style.format({'Lâmpadas': "{:,.0f}"}), use_container_width=True, hide_index=True)
-        
-        perc_led_format = (total_led / total_lampadas_concelho) * 100 if total_lampadas_concelho > 0 else 0
-        st.info(f"O município possui um total de **{total_lampadas_concelho:,.0f}** luminárias, estando **{perc_led_format:.1f}%** já convertidas para tecnologia LED.")
+        st.info(f"O município possui **{total_lampadas_concelho:,.0f}** luminárias no total.")
 
 with tab2:
     st.subheader("Viabilidade e Retorno Financeiro")
