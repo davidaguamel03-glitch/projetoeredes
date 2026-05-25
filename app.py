@@ -418,6 +418,27 @@ kpi4.metric("Poupança Líquida (NPV)", f"{poupanca_liquida:,.0f} €")
 kpi5.metric("Tempo de Retorno (Payback)", payback_ano)
 st.divider()
 
+# --- NOVO BLOCO EXPLICATIVO ESCO ---
+if ativar_esco and len(fluxos_vsap) > 1:
+    st.info("**Como funciona a poupança neste Modelo ESCO? (Valores Médios Mensais no 1º Ano)**")
+    
+    # Cálculo interno do LED "natural" (sem a renda) para o Ano 1
+    inv_led_natural_ano1 = (lampadas_totais * tx_falha_led * custo_rep_led) + (lampadas_totais * taxa_telegestao * custo_iot)
+    
+    # A poupança bruta é o Custo Antigo Total menos os Custos Físicos (Luz Nova + Manutenção)
+    poupanca_bruta_ano1 = fluxos_vsap[1] - (inv_led_natural_ano1 + energia_led_list[1])
+    
+    mensal_bruta = poupanca_bruta_ano1 / 12
+    mensal_esco = mensal_bruta * partilha_esco
+    mensal_camara = mensal_bruta * (1 - partilha_esco)
+    
+    col_e1, col_e2, col_e3 = st.columns(3)
+    col_e1.metric("Poupança Total na Fatura / Mês", f"{mensal_bruta:,.0f} €")
+    col_e2.metric(f"Pagamento à ESCO ({partilha_esco*100:.0f}%)", f"{mensal_esco:,.0f} €", delta="Renda Mensal", delta_color="inverse")
+    col_e3.metric(f"Lucro Limpo Município ({(1-partilha_esco)*100:.0f}%)", f"{mensal_camara:,.0f} €", delta="Retenção", delta_color="normal")
+    st.divider()
+# -----------------------------------
+
 tab1, tab2, tab3 = st.tabs(["1. Diagnóstico do Parque", "2. Análise Financeira", "3. Especificações Técnicas"])
 
 with tab1:
