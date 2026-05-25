@@ -28,7 +28,6 @@ distritos_coord = {
     'Viana do Castelo': (41.7000, -8.8333), 'Vila Real': (41.3000, -7.7500), 'Viseu': (40.6667, -7.9167)
 }
 
-
 @st.cache_data
 def calcular_perfil_energia(distrito, dimming_ativo, p1_start, p1_end, p1_red, p2_start, p2_end, p2_red):
     def in_window(t, start, end):
@@ -97,11 +96,9 @@ def calcular_perfil_energia(distrito, dimming_ativo, p1_start, p1_end, p1_red, p
 
     return vazio_norm_horas, vazio_dim_horas, cheias_norm_horas, cheias_dim_horas
 
-
 @st.cache_data
 def carregar_dados_eredes():
     try:
-        # O 'r' antes das aspas garante que o caminho do Windows é lido corretamente
         df = pd.read_csv("cadastro_iluminacao_publica (9).csv", sep=';', encoding='utf-8')
         df.columns = df.columns.str.strip()
         df['Potência Instalada Total (W)'] = df['Potência Instalada Total (W)'].fillna(0)
@@ -110,7 +107,6 @@ def carregar_dados_eredes():
     except Exception as e:
         st.error(f"Erro ao ler o ficheiro CSV. Verifique o caminho e a integridade do ficheiro. Detalhe: {e}")
         return pd.DataFrame()
-
 
 # ==========================================
 # 2. CABEÇALHO E UI LATERAL (SIDEBAR)
@@ -123,25 +119,18 @@ st.sidebar.markdown("Configuração Global do Projeto")
 
 concelho_escolhido = st.sidebar.selectbox("1. Seleção do Município", lista_concelhos)
 
-# 1. Cria um dataframe temporário apenas com os dados do concelho escolhido
 df_concelho_temp = df_eredes[df_eredes['Concelho'] == concelho_escolhido]
 
-# 2. Verifica se a coluna 'Freguesia' existe no dataset para evitar erros de leitura
 if 'Freguesia' in df_concelho_temp.columns:
-    # Obtém as freguesias únicas desse concelho e adiciona a opção "Todas" no topo
     lista_freguesias = ["Todas"] + sorted(df_concelho_temp['Freguesia'].dropna().unique().tolist())
     freguesia_escolhida = st.sidebar.selectbox("1.1. Seleção da Freguesia", lista_freguesias)
-    
-    # 3. Define o df_filtrado final com base na escolha da freguesia
     if freguesia_escolhida == "Todas":
         df_filtrado = df_concelho_temp
     else:
         df_filtrado = df_concelho_temp[df_concelho_temp['Freguesia'] == freguesia_escolhida]
 else:
-    # Caso a coluna não exista por algum motivo, o sistema assume o concelho inteiro por segurança
     df_filtrado = df_concelho_temp
 
-# O resto do código mantém-se igual e vai usar o df_filtrado já refinado
 distrito_inferido = df_filtrado['Distrito'].iloc[0] if not df_filtrado.empty else 'Lisboa'
 if distrito_inferido not in distritos_coord:
     distrito_inferido = 'Lisboa'
@@ -176,11 +165,9 @@ df_tipos_lampada = pd.DataFrame(dados_editados_tipos)
 total_lampadas_concelho = lampadas_totais + total_led
 
 # --- Mix LED ---
-# --- Mix LED ---
 with st.sidebar.expander("3. Mix de Tipologias LED (%)", expanded=True):
     st.caption("Insira a distribuição (o sistema ajusta para 100% automaticamente).")
     
-    # Substituímos os st.slider por st.number_input para precisão absoluta
     perc_l1 = st.number_input("Viária Tradicional (39W) - %", 0, 100, 40)
     perc_l2 = st.number_input("Viária Circular (45W) - %", 0, 100, 10)
     perc_l3 = st.number_input("Viária Quadrada (45W) - %", 0, 100, 5)
@@ -227,16 +214,16 @@ with st.sidebar.expander("3. Mix de Tipologias LED (%)", expanded=True):
 
 # --- Telegestão ---
 with st.sidebar.expander("4. Perfil de Telegestão", expanded=False):
-    ativar_dimming = st.checkbox("Ativar Regulação de Fluxo", value=True)
+    ativar_dimming = st.checkbox("Ativar Regulação de Fluxo e Telegestão", value=True)
     if ativar_dimming:
         st.markdown("**Patamar 1**")
         p1_inicio = st.number_input("Início (h)", 0, 23, 23, key="p1_i")
         p1_fim = st.number_input("Fim (h)", 0, 23, 2, key="p1_f")
-        p1_red = st.slider("Redução (%)", 0, 80, 30, key="p1_r")
+        p1_red = st.slider("Redução Fluxo (%)", 0, 80, 30, key="p1_r")
         st.markdown("**Patamar 2**")
         p2_inicio = st.number_input("Início (h)", 0, 23, 2, key="p2_i")
         p2_fim = st.number_input("Fim (h)", 0, 23, 6, key="p2_f")
-        p2_red = st.slider("Redução (%)", 0, 80, 50, key="p2_r")
+        p2_red = st.slider("Redução Fluxo (%)", 0, 80, 50, key="p2_r")
     else:
         p1_inicio, p1_fim, p1_red = 0, 0, 0
         p2_inicio, p2_fim, p2_red = 0, 0, 0
@@ -260,7 +247,8 @@ with st.sidebar.expander("5. Parâmetros Financeiros & ESCO", expanded=False):
     ativar_esco = st.checkbox("Ativar Modelo ESCO (CPE)", value=False,
                               help="Contrato de Performance Energética onde a empresa parceira assume o Investimento Inicial.")
     if ativar_esco:
-        anos_contrato = st.slider("Duração do Contrato (Anos)", 5, 15, 10)
+        # AQUI MUDEI O MÁXIMO PARA 16 ANOS
+        anos_contrato = st.slider("Duração do Contrato (Anos)", 5, 16, 16)
         partilha_esco = st.slider("Partilha da Poupança p/ ESCO (%)", 50, 100, 80) / 100.0
     else:
         anos_contrato = 0
@@ -278,17 +266,28 @@ with st.sidebar.expander("6. Custos de Operação (OPEX)", expanded=False):
     custo_rep_base = col_rep1.number_input("Cenário Base (€)", value=50.0, step=5.0)
     custo_rep_led = col_rep2.number_input("Reparação LED (€)", value=60.0, step=5.0)
 
-    custo_iot = 0.0
+    # AQUI ADICIONADA A LÓGICA PERCENTUAL DO IOT
     if ativar_dimming:
         st.divider()
         st.markdown("**Plataforma IoT (Telegestão)**")
+        taxa_telegestao = st.slider("Luminárias com Telegestão (%)", 0, 100, 50) / 100.0
         custo_iot = st.number_input("Subscrição Anual (€/Luminária)", value=12.0, step=1.0)
+        capex_iot_unit = st.number_input("Custo Instalação do Nó IoT (€)", value=80.0, step=10.0, help="CAPEX adicional por luminária com telegestão")
+    else:
+        taxa_telegestao = 0.0
+        custo_iot = 0.0
+        capex_iot_unit = 0.0
 
 # ==========================================
 # 3. MOTOR DE CÁLCULO
 # ==========================================
 qtd_lista = [round(lampadas_totais * (p / 100)) for p in perc_lista_norm]
-capex_total = sum(q * p for q, p in zip(qtd_lista, precos_lista))
+capex_iluminacao = sum(q * p for q, p in zip(qtd_lista, precos_lista))
+
+# Cálculo do CAPEX extra para o hardware de Telegestão
+capex_iot_total = (lampadas_totais * taxa_telegestao) * capex_iot_unit
+capex_projeto_total = capex_iluminacao + capex_iot_total
+
 potencia_led_w = sum(q * w for q, w in zip(qtd_lista, watts_lista))
 potencia_led_kw = potencia_led_w / 1000.0
 
@@ -309,7 +308,8 @@ kwh_ano_led = potencia_led_kw * (vazio_dim + cheias_dim)
 energia_ativa_ano_led = potencia_led_kw * (vazio_dim * preco_vazio + cheias_dim * preco_cheias)
 custo_fixo_ano_led = potencia_led_kw * termo_fixo * 12
 
-anos = list(range(16))
+# AQUI MUDADO PARA RANGE(17) PARA TER 16 ANOS (0 a 16)
+anos = list(range(17))
 inv_vsap_list, energia_vsap_list, fluxos_vsap = [], [], []
 inv_led_list, energia_led_list, fluxos_led = [], [], []
 poupanca_ano_list = []
@@ -317,7 +317,7 @@ poupanca_ano_list = []
 for ano in anos:
     if ano == 0:
         inv_vsap, energia_vsap = 0, 0
-        inv_led = 0 if ativar_esco else capex_total  # Se ESCO, Câmara paga 0€
+        inv_led = 0 if ativar_esco else capex_projeto_total  # Se ESCO, Câmara paga 0€
         energia_led = 0
 
         inv_vsap_list.append(inv_vsap)
@@ -335,16 +335,17 @@ for ano in anos:
 
         inv_vsap = (lampadas_totais * tx_falha_base * custo_rep_base) + (
             (lampadas_totais * custo_rep_base) if ano in [5, 10, 15] else 0)
-        inv_led_natural = (lampadas_totais * tx_falha_led * custo_rep_led) + (lampadas_totais * custo_iot)
+            
+        # Manutenção de Falhas + Custo da Plataforma IoT (só para a percentagem escolhida)
+        inv_led_natural = (lampadas_totais * tx_falha_led * custo_rep_led) + (lampadas_totais * taxa_telegestao * custo_iot)
 
         tot_vsap = inv_vsap + energia_vsap
         tot_led_natural = inv_led_natural + energia_led
 
-        # Poupanca bruta gerada pelo projeto este ano
         poupanca_bruta = tot_vsap - tot_led_natural
 
         if ativar_esco and ano <= anos_contrato:
-            # A câmara cede a % combinada da poupança à ESCO (Isto entra como despesa/renda)
+            # ESCO absorve a renda combinada
             renda_esco = poupanca_bruta * partilha_esco
             tot_led_ano = tot_led_natural + renda_esco
             inv_led_list.append(inv_led_natural + renda_esco)
@@ -368,13 +369,12 @@ poupanca_liquida = cal_vsap - cal_led
 # ==========================================
 # 4. INTERFACE PRINCIPAL (MAIN UI)
 # ==========================================
-# Verifica se a variável da freguesia existe e se não está definida como "Todas"
 if 'freguesia_escolhida' in locals() and freguesia_escolhida != "Todas":
     st.title(f"Auditoria Energética IP: Concelho de {concelho_escolhido} — {freguesia_escolhida}")
 else:
     st.title(f"Auditoria Energética IP: Município de {concelho_escolhido}")
 
-st.markdown("Ferramenta de Apoio à Decisão (Análise LCC 15 Anos)")
+st.markdown("Ferramenta de Apoio à Decisão (Análise LCC 16 Anos)")
 
 # --- KPIs GLOBAIS (Sempre Visíveis) ---
 st.divider()
@@ -383,10 +383,10 @@ kpi1.metric("Luminárias a Substituir", f"{lampadas_totais:,.0f} un")
 kpi2.metric("Potência a Abater", f"{potencia_antiga_kw:,.1f} kW")
 
 if ativar_esco:
-    kpi3.metric("Investimento Município (Ano 0)", "0 €", f"CAPEX {capex_total:,.0f} € pago por ESCO",
+    kpi3.metric("Investimento Município (Ano 0)", "0 €", f"CAPEX {capex_projeto_total:,.0f} € pago pela ESCO",
                 delta_color="normal")
 else:
-    kpi3.metric("Investimento Previsto (CAPEX)", f"{capex_total:,.0f} €")
+    kpi3.metric("Investimento Previsto (CAPEX)", f"{capex_projeto_total:,.0f} €")
 
 kpi4.metric("Poupança Líquida Município (NPV)", f"{poupanca_liquida:,.0f} €")
 st.divider()
@@ -438,7 +438,6 @@ with tab2:
                        line=dict(color='#e74c3c')))
         fig_payback.add_trace(
             go.Scatter(x=anos, y=acumulado_led, mode='lines+markers', name='Projeto LED', line=dict(color='#2ecc71')))
-        # O teu código atual termina assim:
         fig_payback.update_layout(
             title="Análise de Despesa Acumulada (Break-Even)",
             xaxis_title="Anos de Projeto",
@@ -447,7 +446,6 @@ with tab2:
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
         )
 
-        # ADICIONA ESTAS DUAS LINHAS A SEGUIR:
         fig_payback.update_xaxes(tickfont=dict(family='Arial', size=16, color='black'), title_font=dict(size=18, color='black'))
         fig_payback.update_yaxes(tickfont=dict(family='Arial', size=16, color='black'), title_font=dict(size=18, color='black'))
         st.plotly_chart(fig_payback, use_container_width=True)
@@ -473,7 +471,7 @@ with tab2:
         st.markdown(
             f"**Tabela Financeira de Ciclo de Vida (Câmara paga {partilha_esco * 100:.0f}% da Poupança à ESCO durante {anos_contrato} anos)**")
     else:
-        st.markdown("**Tabela Financeira de Ciclo de Vida (15 Anos)**")
+        st.markdown("**Tabela Financeira de Ciclo de Vida (16 Anos)**")
 
     df_final = pd.DataFrame({
         'Ano': anos,
@@ -487,7 +485,6 @@ with tab2:
     }).set_index('Ano')
     st.dataframe(df_final.style.format("{:,.2f} €"), use_container_width=True)
 
-    # --- NOVIDADE PONTO 5: Exportação para CSV/Excel ---
     csv_data = df_final.to_csv(index=True, sep=';', decimal=',').encode('utf-8-sig')
     st.download_button(
         label="Descarregar Tabela Financeira (CSV/Excel)",
@@ -502,7 +499,7 @@ with tab3:
     col_lotes, col_curva = st.columns([1.5, 1])
 
     with col_lotes:
-        st.markdown("**Detalhe do Investimento por Lote**")
+        st.markdown("**Detalhe do Investimento (CAPEX)**")
         df_lotes = pd.DataFrame({
             "Lote": nomes_lista,
             "Alocação": perc_lista_norm,
@@ -515,6 +512,9 @@ with tab3:
         st.dataframe(df_lotes.style.format(
             {"Alocação": "{:.1f}%", "Qtd": "{:.0f}", "Potência": "{:.0f} W", "Preço Unit.": "{:,.2f} €",
              "CAPEX Total": "{:,.2f} €"}), use_container_width=True, hide_index=True)
+             
+        if ativar_dimming and taxa_telegestao > 0:
+            st.info(f"**Hardware Telegestão (Nós IoT):** {capex_iot_total:,.2f} € para {(lampadas_totais * taxa_telegestao):,.0f} luminárias.")
 
     with col_curva:
         st.markdown(f"**Curva de Telegestão (Ajustada ao pôr do sol de hoje em {distrito_inferido})**")
@@ -527,14 +527,12 @@ with tab3:
         hora_liga_real = s_hoje['dusk'].hour + s_hoje['dusk'].minute / 60.0
         hora_desliga_real = s_hoje['dawn'].hour + s_hoje['dawn'].minute / 60.0
 
-
         def check_window(t, start, end):
             if start == end: return False
             if start < end:
                 return start <= t < end
             else:
                 return t >= start or t < end
-
 
         x_hours = np.linspace(16, 33, 400)
         y_power = []
