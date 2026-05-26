@@ -493,7 +493,7 @@ with tab1:
     with col_dados:
         st.markdown("**Inventário Existente**")
         st.dataframe(df_chart.style.format({'Lâmpadas': "{:,.0f}"}), use_container_width=True, hide_index=True)
-        st.info(f"O município possui **{total_lampadas_concelho:,.0f}** luminárias no total.")
+        st.info(f"A freguesia possui **{total_lampadas_concelho:,.0f}** luminárias no total.")
 
 with tab2:
     st.subheader("Viabilidade e Retorno Financeiro")
