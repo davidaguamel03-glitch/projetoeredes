@@ -110,7 +110,7 @@ def carregar_dados_eredes():
         return pd.DataFrame()
 
 # ==========================================
-# 2. CABEÇALHO E UI LATERAL (SIDEBAR)
+# 2. CABEÇALHO SIDEBAR
 # ==========================================
 df_eredes = carregar_dados_eredes()
 lista_concelhos = sorted(df_eredes['Concelho'].dropna().unique().tolist()) if not df_eredes.empty else ["Sem Dados"]
@@ -138,7 +138,7 @@ if distrito_inferido not in distritos_coord:
 
 st.sidebar.markdown("---")
 
-# --- MODELO ESCO MOVIDO PARA AQUI ---
+# --- MODELO ESCO  ---
 st.sidebar.markdown("**Modelo de Financiamento**")
 ativar_esco = st.sidebar.checkbox("Ativar Modelo ESCO (CPE)", value=False,
                             help="Contrato de Performance Energética onde a empresa parceira assume o Investimento Inicial.")
@@ -151,7 +151,7 @@ else:
 
 st.sidebar.markdown("---")
 
-# --- Ajuste Fino do Parque ---
+# --- Ajuste do Parque de luminárias ---
 with st.sidebar.expander("2. Inventário do Parque Atual", expanded=False):
     st.caption("Ajuste as quantidades reais caso difiram dos registos da E-REDES.")
     df_agrupado_tipos = df_filtrado.groupby('Tipo de Lâmpada').agg(
