@@ -136,6 +136,21 @@ distrito_inferido = df_filtrado['Distrito'].iloc[0] if not df_filtrado.empty els
 if distrito_inferido not in distritos_coord:
     distrito_inferido = 'Lisboa'
 
+st.sidebar.markdown("---")
+
+# --- MODELO ESCO MOVIDO PARA AQUI ---
+st.sidebar.markdown("**Modelo de Financiamento**")
+ativar_esco = st.sidebar.checkbox("Ativar Modelo ESCO (CPE)", value=False,
+                            help="Contrato de Performance Energética onde a empresa parceira assume o Investimento Inicial.")
+if ativar_esco:
+    anos_contrato = st.sidebar.slider("Duração do Contrato ESCO (Anos)", min_value=5, max_value=20, value=20)
+    partilha_esco = st.sidebar.slider("Partilha da Poupança p/ ESCO (%)", 50, 100, 80) / 100.0
+else:
+    anos_contrato = 0
+    partilha_esco = 0.0
+
+st.sidebar.markdown("---")
+
 # --- Ajuste Fino do Parque ---
 with st.sidebar.expander("2. Inventário do Parque Atual", expanded=False):
     st.caption("Ajuste as quantidades reais caso difiram dos registos da E-REDES.")
@@ -235,8 +250,8 @@ with st.sidebar.expander("4. Perfis de Regulação de Fluxo", expanded=False):
         p1_inicio, p1_fim, p1_red = 0, 0, 0
         p2_inicio, p2_fim, p2_red = 0, 0, 0
 
-# --- Dados Financeiros & ESCO ---
-with st.sidebar.expander("5. Parâmetros Financeiros & ESCO", expanded=False):
+# --- Dados Financeiros ---
+with st.sidebar.expander("5. Parâmetros Financeiros", expanded=False):
     st.markdown("**Tarifário (Energia Ativa)**")
     preco_vazio = st.number_input("Tarifa Vazio (€/kWh)", value=0.1155, format="%.4f")
     preco_cheias = st.number_input("Tarifa Fora Vazio (€/kWh)", value=0.1519, format="%.4f")
@@ -249,17 +264,6 @@ with st.sidebar.expander("5. Parâmetros Financeiros & ESCO", expanded=False):
     inflacao_energia = st.number_input("Inflação Anual da Energia (%)", value=2.0, step=0.5) / 100
     taxa_atualizacao = st.number_input("Taxa de Atualização (CAL) (%)", value=4.0, step=0.5) / 100
     fator_co2 = st.number_input("Fator Emissão (kg CO2/kWh)", value=0.20, step=0.01)
-
-    st.divider()
-    st.markdown("**Modelo de Financiamento**")
-    ativar_esco = st.checkbox("Ativar Modelo ESCO (CPE)", value=False,
-                              help="Contrato de Performance Energética onde a empresa parceira assume o Investimento Inicial.")
-    if ativar_esco:
-        anos_contrato = st.slider("Duração do Contrato ESCO (Anos)", min_value=5, max_value=20, value=20)
-        partilha_esco = st.slider("Partilha da Poupança p/ ESCO (%)", 50, 100, 80) / 100.0
-    else:
-        anos_contrato = 0
-        partilha_esco = 0.0
 
 # --- Custos de Operação (OPEX) ---
 with st.sidebar.expander("6. Custos de Operação (OPEX)", expanded=False):
@@ -493,7 +497,7 @@ with tab1:
     with col_dados:
         st.markdown("**Inventário Existente**")
         st.dataframe(df_chart.style.format({'Lâmpadas': "{:,.0f}"}), use_container_width=True, hide_index=True)
-        st.info(f"A freguesia possui **{total_lampadas_concelho:,.0f}** luminárias no total.")
+        st.info(f"O município possui **{total_lampadas_concelho:,.0f}** luminárias no total.")
 
 with tab2:
     st.subheader("Viabilidade e Retorno Financeiro")
